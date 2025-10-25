@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لعبة الأرنب والكوينز</title>
+<style>
+  body {
+    margin: 0;
+    background: #000;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    margin: auto;
+  }
+</style>
+</head>
+<body>
+<canvas id="game" width="400" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+let player = { x: 170, w: 60, speed: 5, flipped: false };
+let keys = {};
+let coins = [];
+let score = 0;
+const COIN_WIDTH = 30;
+
+// تحميل الصور
+const bg = new Image();
+bg.src = 'background.png';
+
+const bunnyImg = new Image();
+bunnyImg.src = 'bunny_idle.png';
+
+const coinImg = new Image();
+coinImg.src = 'coin.png';
+
+// التحميل
+let loaded = 0;
+const total = 3;
+function checkLoaded() {
+  loaded++;
+  if (loaded === total) loop(); 
+}
+
+bg.onload = checkLoaded;
+bunnyImg.onload = checkLoaded;
+coinImg.onload = checkLoaded;
+
+// تحكم
+document.addEventListener('keydown', e => keys[e.key] = true);
+document.addEventListener('keyup', e => keys[e.key] = false);
+
+// توليد الكوينز
+function spawnCoin() {
+  const coin = {
+    x: Math.random() * (canvas.width - COIN_WIDTH),
+    y: -50,
+    speed: 3 + Math.random() * 2
+  };
+  coins.push(coin);
+}
+setInterval(spawnCoin, 1000);
+
+function update() {
+  if (keys['ArrowRight'] && player.x + player.w < canvas.width) {
+    player.x += player.speed;
+    player.flipped = true;
+  }
+
+  if (keys['ArrowLeft'] && player.x > 0) {
+    player.x -= player.speed;
+    player.flipped = false;
+  }
+
+  for (let i = coins.length - 1; i >= 0; i--) {
+    let c = coins[i];
+    c.y += c.speed;
+
+    const aspectCoin = coinImg.width / coinImg.height;
+    const coinW = COIN_WIDTH;
+    const coinH = coinW / aspectCoin;
+
+    const aspectBunny = bunnyImg.width / bunnyImg.height;
+    const bunnyW = player.w;
+    const bunnyH = bunnyW / aspectBunny;
+    const bunnyY = canvas.height - bunnyH - 10; // ثابت عند القاع
+
+    // التصادم
+    if (
+      c.x < player.x + bunnyW &&
+      c.x + coinW > player.x &&
+      c.y < bunnyY + bunnyH &&
+      c.y + coinH > bunnyY
+    ) {
+      coins.splice(i, 1);
+      score++;
+    } else if (c.y > canvas.height) {
+      coins.splice(i, 1);
+    }
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // الخلفية
+  if (bg.complete) ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+
+  // النتيجة أعلى يسار
+  ctx.fillStyle = 'gold';
+  ctx.font = 'bold 22px Tahoma';
+  ctx.textAlign = 'left';
+  ctx.fillText(`SCORE: ${score}`, 10, 30);
+
+  // الأرنب
+  const aspectBunny = bunnyImg.width / bunnyImg.height;
+  const bunnyW = player.w;
+  const bunnyH = bunnyW / aspectBunny;
+  const bunnyY = canvas.height - bunnyH - 10; // ثابت عند القاع
+
+  ctx.save();
+  if (player.flipped) {
+    ctx.translate(player.x + bunnyW / 2, bunnyY + bunnyH / 2);
+    ctx.scale(-1, 1);
+    ctx.drawImage(bunnyImg, -bunnyW / 2, -bunnyH / 2, bunnyW, bunnyH);
+  } else {
+    ctx.drawImage(bunnyImg, player.x, bunnyY, bunnyW, bunnyH);
+  }
+  ctx.restore();
+
+  // رسم الكوينز
+  for (let c of coins) {
+    if (coinImg.complete) {
+      const aspect = coinImg.width / coinImg.height;
+      const w = COIN_WIDTH;
+      const h = w / aspect;
+      ctx.drawImage(coinImg, c.x, c.y, w, h);
+    }
+  }
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
